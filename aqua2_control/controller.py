@@ -33,18 +33,27 @@ class modes(Enum):
     swimmode = 4
 
 
-class AquaController(Node):
+class Controller(Node):
     """Aqua2 controller with a MAVROS-style interface."""
 
-    def __init__(self):
-        super().__init__("aqua_controller", namespace=get_namespace())
+    def __init__(
+        self,
+        default_depth: float = 0.5,
+        default_speed: float = 0.5,
+        acceptance_radius: float = 1.1,
+    ):
+        super().__init__("aqua2_controller", namespace=get_namespace())
         self.get_logger().info("Initializing AquaController.")
+
+        # Configurable defaults
+        self.default_depth = float(default_depth)
+        self.default_speed = float(default_speed)
 
         # State & navigation-related fields
         self.is_calibrated = False
         self.mode = -1
         self.ap_mode = -1
-        self.acceptance_radius = 3.0
+        self.acceptance_radius = 3.0  # temporary, will be set below
 
         # Distance-to-waypoint state (fed by Distance topic)
         self.distance_to_target = float("inf")
@@ -88,7 +97,7 @@ class AquaController(Node):
         )
         self.eta_publisher = self.create_publisher(
             Float32MultiArray,
-            "mavros/waypoint_eta",
+            "waypoint_eta",
             qos_profile_sensor_data,
         )
 
@@ -104,7 +113,7 @@ class AquaController(Node):
         self.calibrate()
         self.set_mode("swimmode")
         self.set_autopilot_mode("depth")
-        self.set_acceptance_radius(1.1)
+        self.set_acceptance_radius(acceptance_radius)
 
     # ------------------- Velocity / Odom -------------------
 
@@ -145,13 +154,13 @@ class AquaController(Node):
     def set_acceptance_radius(self, radius: float):
         if radius < 1.0:
             self.get_logger().warn(
-                f"Radius {radius} is too small. Keeping previous value."
+                f"Radius {radius} is too small. Keeping previous value ({self.acceptance_radius})."
             )
         else:
-            self.acceptance_radius = radius
+            self.acceptance_radius = float(radius)
 
     def at_waypoint(self, _waypoint) -> bool:
-        """MAVROS-style interface; waypoint arg kept for compatibility."""
+        """Waypoint arg kept for compatibility."""
         return self.distance_to_target < self.acceptance_radius
 
     def go2waypoint(self, waypoint, timeout: float = 900.0) -> bool:
@@ -172,12 +181,12 @@ class AquaController(Node):
         # internal navigation frame expects swapped axes (x <- y, y <- x).
         local_x = float(waypoint_arr[0])
         local_y = float(waypoint_arr[1])
-        depth = float(waypoint_arr[2]) if waypoint_arr.size >= 3 else 0.5
+        depth = float(waypoint_arr[2]) if waypoint_arr.size >= 3 else self.default_depth
 
         coord_frame = 0
         target_x = local_y
         target_y = local_x
-        speed = 0.5  # nominal speed
+        speed = self.default_speed
 
         # Share only what's needed with distance_callback
         self.target_x = target_x
@@ -185,7 +194,8 @@ class AquaController(Node):
         self.distance_to_target = float("inf")
 
         self.get_logger().info(
-            f"Going to waypoint (local): x={local_x}, y={local_y}, depth={depth}"
+            f"Going to waypoint (local): x={local_x}, y={local_y}, depth={depth}, "
+            f"speed={speed}, acceptance_radius={self.acceptance_radius}"
         )
 
         clock = self.get_clock()
@@ -425,7 +435,7 @@ class AquaController(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = AquaController()
+    node = Controller()
     try:
         node.mission()
     finally:
