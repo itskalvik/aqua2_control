@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>aqua2_control</name>
+  <version>0.0.1</version>
+  <description>A ROS2 package for controlling the Aqua2 robot</description>
+  <maintainer email="itskalvik@gmail.com">Kalvik</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Core ROS 2 client library (Python) -->
+  <exec_depend>rclpy</exec_depend>
+
+  <!-- Message / service dependencies used in the script -->
+  <exec_depend>aqua2_interfaces</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
+
+  <!-- Utility / helper package you import -->
+  <exec_depend>ir_utils</exec_depend>
+
+  <!-- Test dependencies -->
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
