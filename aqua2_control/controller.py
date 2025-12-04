@@ -40,7 +40,7 @@ class Controller(Node):
         self,
         default_depth: float = 0.5,
         default_speed: float = 0.5,
-        acceptance_radius: float = 1.1,
+        acceptance_radius: float = 1.5,
     ):
         super().__init__("aqua2_controller", namespace=get_namespace())
         self.get_logger().info("Initializing AquaController.")
@@ -53,7 +53,7 @@ class Controller(Node):
         self.is_calibrated = False
         self.mode = -1
         self.ap_mode = -1
-        self.acceptance_radius = 1.1  # temporary, will be set below
+        self.acceptance_radius = 1.5  # temporary, will be set below
 
         # Distance-to-waypoint state (fed by Distance topic)
         self.distance_to_target = float("inf")
@@ -79,7 +79,7 @@ class Controller(Node):
         )
         self.create_subscription(
             Odometry,
-            "/a14/navigation/local_position",
+            "navigation/local_position",
             self.vehicle_odom_callback,
             1,
         )
