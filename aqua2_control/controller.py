@@ -53,7 +53,7 @@ class Controller(Node):
         self.is_calibrated = False
         self.mode = -1
         self.ap_mode = -1
-        self.acceptance_radius = 3.0  # temporary, will be set below
+        self.acceptance_radius = 1.1  # temporary, will be set below
 
         # Distance-to-waypoint state (fed by Distance topic)
         self.distance_to_target = float("inf")
@@ -146,7 +146,7 @@ class Controller(Node):
     def distance_callback(self, msg: Distance):
         """Update distance to current target waypoint (from navigation node)."""
         # Only update if the distance is for our active target
-        if msg.target_x == self.target_x and msg.target_y == self.target_y:
+        if np.linalg.norm([msg.target_x - self.target_x, msg.target_y - self.target_y]) < 1e-3:
             self.distance_to_target = msg.distance
 
     # ------------------- Navigation Core -------------------
@@ -179,38 +179,29 @@ class Controller(Node):
 
         # Aqua's user-facing local frame (x, y) ->
         # internal navigation frame expects swapped axes (x <- y, y <- x).
-        local_x = float(waypoint_arr[0])
-        local_y = float(waypoint_arr[1])
+        self.target_x = float(waypoint_arr[0])
+        self.target_y = float(waypoint_arr[1])
         depth = float(waypoint_arr[2]) if waypoint_arr.size >= 3 else self.default_depth
-
-        coord_frame = 0
-        target_x = local_y
-        target_y = local_x
-        speed = self.default_speed
-
-        # Share only what's needed with distance_callback
-        self.target_x = target_x
-        self.target_y = target_y
         self.distance_to_target = float("inf")
 
         self.get_logger().info(
-            f"Going to waypoint (local): x={local_x}, y={local_y}, depth={depth}, "
-            f"speed={speed}, acceptance_radius={self.acceptance_radius}"
+            f"Going to waypoint (local): x={self.target_x}, y={self.target_y}, depth={depth}, "
+            f"speed={self.default_speed}, acceptance_radius={self.acceptance_radius}"
         )
 
+        # Publish waypoint command
+        wp_msg = Waypoint()
+        wp_msg.coord_frame = 0
+        wp_msg.target_x = self.target_x
+        wp_msg.target_y = self.target_y
+        wp_msg.target_depth = depth
+        wp_msg.speed = self.default_speed
+        
         clock = self.get_clock()
         start_time = clock.now().to_msg().sec
 
         while not self.at_waypoint(waypoint_arr):
             now = clock.now().to_msg().sec
-
-            # Publish waypoint command
-            wp_msg = Waypoint()
-            wp_msg.coord_frame = coord_frame
-            wp_msg.target_x = target_x
-            wp_msg.target_y = target_y
-            wp_msg.target_depth = depth
-            wp_msg.speed = speed
             self.local_wp_pub.publish(wp_msg)
 
             # Publish ETA using distance from navigation/distance_to_wp
@@ -226,7 +217,7 @@ class Controller(Node):
             # Timeout check
             if (now - start_time) > timeout:
                 self.get_logger().info(
-                    f"Timeout: Failed to go to waypoint x={local_x}, y={local_y}"
+                    f"Timeout: Failed to go to waypoint x={self.target_x}, y={self.target_y}"
                 )
                 return False
 
@@ -234,7 +225,7 @@ class Controller(Node):
             rclpy.spin_once(self, timeout_sec=0.1)
 
         self.get_logger().info(
-            f"Waypoint reached: x={local_x}, y={local_y}, depth={depth}"
+            f"Waypoint reached: x={self.target_x}, y={self.target_y}, depth={depth}"
         )
         return True
 
