@@ -36,18 +36,17 @@ class modes(Enum):
 class Controller(Node):
     """Aqua2 controller with a MAVROS-style interface."""
 
-    def __init__(
-        self,
-        default_depth: float = 0.5,
-        default_speed: float = 0.5,
-        acceptance_radius: float = 1.5,
-    ):
+    def __init__(self):
         super().__init__("aqua2_controller", namespace=get_namespace())
         self.get_logger().info("Initializing AquaController.")
 
-        # Configurable defaults
-        self.default_depth = float(default_depth)
-        self.default_speed = float(default_speed)
+        # ROS param configurable defaults
+        self.declare_parameter("depth", 0.5)
+        self.declare_parameter("speed", 0.5)
+        self.declare_parameter("acceptance_radius", 1.1)
+
+        self.depth = float(self.get_parameter("depth").value)
+        self.speed = float(self.get_parameter("speed").value)
 
         # State & navigation-related fields
         self.is_calibrated = False
@@ -113,7 +112,9 @@ class Controller(Node):
         self.calibrate()
         self.set_mode("swimmode")
         self.set_autopilot_mode("depth")
-        self.set_acceptance_radius(acceptance_radius)
+        self.set_acceptance_radius(
+            float(self.get_parameter("acceptance_radius").value)
+        )
 
     # ------------------- Velocity / Odom -------------------
 
@@ -181,7 +182,7 @@ class Controller(Node):
         # internal navigation frame expects swapped axes (x <- y, y <- x).
         self.target_x = float(waypoint_arr[0])
         self.target_y = float(waypoint_arr[1])
-        depth = float(waypoint_arr[2]) if waypoint_arr.size >= 3 else self.default_depth
+        depth = float(waypoint_arr[2]) if waypoint_arr.size >= 3 else self.depth
         self.distance_to_target = float("inf")
 
         self.get_logger().info(
@@ -195,7 +196,7 @@ class Controller(Node):
         wp_msg.target_x = self.target_x
         wp_msg.target_y = self.target_y
         wp_msg.target_depth = depth
-        wp_msg.speed = self.default_speed
+        wp_msg.speed = self.speed
         
         clock = self.get_clock()
         start_time = clock.now().to_msg().sec
