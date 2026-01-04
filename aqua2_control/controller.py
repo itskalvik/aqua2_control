@@ -96,7 +96,7 @@ class Controller(Node):
         )
         self.eta_publisher = self.create_publisher(
             Float32MultiArray,
-            "waypoint_eta",
+            "/waypoint_eta",
             qos_profile_sensor_data,
         )
 
