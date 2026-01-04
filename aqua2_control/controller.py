@@ -187,7 +187,7 @@ class Controller(Node):
 
         self.get_logger().info(
             f"Going to waypoint (local): x={self.target_x}, y={self.target_y}, depth={depth}, "
-            f"speed={self.default_speed}, acceptance_radius={self.acceptance_radius}"
+            f"speed={self.speed}, acceptance_radius={self.acceptance_radius}"
         )
 
         # Publish waypoint command
