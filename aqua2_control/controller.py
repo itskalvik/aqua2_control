@@ -47,6 +47,7 @@ class Controller(Node):
 
         self.depth = float(self.get_parameter("depth").value)
         self.speed = float(self.get_parameter("speed").value)
+        self.vehicle_position = np.array([0., 0., 0.])
 
         # State & navigation-related fields
         self.is_calibrated = False
@@ -120,6 +121,10 @@ class Controller(Node):
 
     def vehicle_odom_callback(self, msg: Odometry):
         """Callback for odom: computes nominal planar linear velocity."""
+        self.vehicle_position[0] = msg.pose.pose.position.x
+        self.vehicle_position[1] = msg.pose.pose.position.y
+        self.vehicle_position[2] = msg.pose.pose.position.z
+
         vx = msg.twist.twist.linear.x
         vy = msg.twist.twist.linear.y
         velocity = np.hypot(vx, vy)
