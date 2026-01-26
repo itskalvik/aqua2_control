@@ -17,7 +17,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32MultiArray
 
 # Services
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, Trigger
 from aqua2_interfaces.srv import SetString, SetInt
 from robot_localization.srv import SetPose
 
@@ -107,9 +107,12 @@ class Controller(Node):
         self.ap_mode_client = self.create_client(SetInt, "autopilot/set_autopilot_mode")
         self.local_pose_client = self.create_client(SetPose, "set_pose")
         self.reset_imu_client = self.create_client(Empty, "imu/zero_heading")
+        self.reset_dvl_client = self.create_client(Empty, "dvl/reset_odometry")
 
         # Initialization sequence
+        self.zero_dvl()
         self.zero_local_pose()
+        self.zero_heading()
         self.calibrate()
         self.set_mode("swimmode")
         self.set_autopilot_mode("depth")
@@ -310,6 +313,27 @@ class Controller(Node):
             if time.time() - start_time >= timeout:
                 self.get_logger().error(
                     "Zero local pose failed! Timed out before zeroing finished."
+                )
+                return False
+            rclpy.spin_once(self, timeout_sec=0.1)
+
+        return True
+
+    def zero_dvl(self, timeout: float = 5.0) -> bool:
+        self.get_logger().info("Zeroing dvl...")
+        if not self.reset_dvl_client.wait_for_service(timeout_sec=2.0):
+            self.get_logger().error(
+                "Zero dvl failed! Cannot find service server."
+            )
+            return False
+
+        future = self.reset_dvl_client.call_async(Trigger.Request())
+        start_time = time.time()
+
+        while not future.done():
+            if time.time() - start_time >= timeout:
+                self.get_logger().error(
+                    "Zero dvl failed! Timed out before zeroing finished."
                 )
                 return False
             rclpy.spin_once(self, timeout_sec=0.1)
