@@ -107,18 +107,23 @@ class Controller(Node):
         self.ap_mode_client = self.create_client(SetInt, "autopilot/set_autopilot_mode")
         self.local_pose_client = self.create_client(SetPose, "set_pose")
         self.reset_imu_client = self.create_client(Empty, "imu/zero_heading")
-        self.reset_dvl_client = self.create_client(Empty, "dvl/reset_odometry")
+        self.reset_dvl_client = self.create_client(Trigger, "dvl/reset_odometry")
 
-        # Initialization sequence
-        self.zero_dvl()
-        self.zero_local_pose()
-        self.zero_heading()
-        self.calibrate()
-        self.set_mode("swimmode")
-        self.set_autopilot_mode("depth")
-        self.set_acceptance_radius(
-            float(self.get_parameter("acceptance_radius").value)
-        )
+        self.robot_initialized = False
+
+    def init_robot(self):
+        if not self.robot_initialized:
+            # Initialization sequence
+            self.calibrate()
+            self.set_mode("swimmode")
+            self.set_autopilot_mode("depth")
+            self.set_acceptance_radius(
+                float(self.get_parameter("acceptance_radius").value)
+            )
+            self.zero_dvl()
+            self.zero_local_pose()
+            self.zero_heading()
+        self.robot_initialized = True
 
     # ------------------- Velocity / Odom -------------------
 
@@ -179,6 +184,7 @@ class Controller(Node):
             waypoint (list/ndarray): [x, y] or [x, y, depth] in the local frame.
             timeout (float): Maximum time (s) to keep trying to reach the waypoint.
         """
+        self.init_robot() # Ensure the robot is initialized
         waypoint_arr = np.asarray(waypoint, dtype=float).flatten()
         if waypoint_arr.size < 2:
             self.get_logger().error(
